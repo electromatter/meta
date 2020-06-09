@@ -1,10 +1,10 @@
 .text
 .global fixture_bootstrap
 fixture_bootstrap:
-// Save page pointers
-mov %rdi, %r12
-mov %rsi, %r13
-mov %rdx, %r14
+// Load page pointers
+mov (%rdi), %r12
+mov 8(%rdi), %r13
+mov 16(%rdi), %r14
 
 // Sort page pointers
 cmp %r12, %r13
@@ -16,6 +16,13 @@ xchg %r12, %r14
 3: cmp %r13, %r14
 ja 3f
 xchg %r13, %r14
+3: test %r13, %r13
+jnz 3f
+mov %r14, %r13
+3: test %r12, %r12
+jnz 3f
+mov %r13, %r12
+
 
 // Unmap [0, page0)
 3: mov $11, %rax
@@ -26,12 +33,12 @@ test %rax, %rax
 jnz 1f
 
 // Unmap (page0, page1)
-mov $11, %rax
+3: mov $11, %rax
 mov %r12, %rdi
 add $4096, %rdi
 mov %r13, %rsi
 sub %rdi, %rsi
-jz 3f
+jb 3f
 syscall
 test %rax, %rax
 jnz 1f
@@ -42,7 +49,7 @@ mov %r13, %rdi
 add $4096, %rdi
 mov %r14, %rsi
 sub %rdi, %rsi
-jz 3f
+jb 3f
 syscall
 test %rax, %rax
 jnz 1f

@@ -12,7 +12,7 @@ int main(int argc, char **argv)
 {
 	pid_t pid;
 	int status, ret;
-	struct fixture *fix = fixture_fork();
+	struct fixture *fix = fixture_fork(0);
 	if (!fix)
 		return 1;
 
@@ -27,7 +27,7 @@ int main(int argc, char **argv)
 			return 1;
 		}
 
-		printf("CHANGE: pid=%d sig=%d ptr=%p lower=%p upper=%p\n", pid, WSTOPSIG(status), fix->siginfo.si_addr, fix->siginfo.si_lower, fix->siginfo.si_upper);
+		printf("CHANGE: pid=%d sig=%d ptr=%p lower=%p upper=%p\n", pid, WIFSTOPPED(status) ? WSTOPSIG(status) : WTERMSIG(status), fix->siginfo.si_addr, fix->siginfo.si_lower, fix->siginfo.si_upper);
 
 		if (ret > 0 && fixture_run(fix, code, sizeof(code)) < 0) {
 			fixture_free(fix);

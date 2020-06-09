@@ -13,7 +13,7 @@
 
 extern unsigned char fixture_bootstrap[4096];
 
-static void *rand_page(void)
+static void *rand_page(void *other)
 {
 	int prot = PROT_READ | PROT_WRITE;
 	int flags = MAP_SHARED | MAP_ANONYMOUS;
@@ -30,8 +30,15 @@ static void *rand_page(void)
 		rand_addr <<= 10;
 		rand_addr &= ((uintptr_t)1 << 47) - 1;
 
+		/* Leave the bottom half of userspace for the heap */
+		rand_addr |= 0x400000000000ULL;
+
 		/* Try to keep them within 4GB of each other */
-		rand_addr |= 0x7fff00000000ULL;
+		if (other) {
+			rand_addr &= 0xffffffffUL;
+			rand_addr |= (uintptr_t)other & 0xffffffff00000000ULL;
+			rand_addr &= ~(uintptr_t)0xfff;
+		}
 
 		addr = mmap((void *)rand_addr, PAGE_SIZE, prot, flags, -1, 0);
 		if (!addr)
@@ -55,6 +62,7 @@ static void fixture_child(struct fixture *fix)
 {
 	int i;
 	sigset_t set;
+	void *pages[] = {fix->code, fix->data, fix->rodata};
 
 	/* Close all files */
 	for (i = 0; i < 1000; i++)
@@ -74,20 +82,16 @@ static void fixture_child(struct fixture *fix)
 	personality(0);
 	if (mprotect(fix->code, PAGE_SIZE, PROT_EXEC) != 0)
 		abort();
-	if (mprotect(fix->data, PAGE_SIZE, PROT_READ | PROT_WRITE) != 0)
+	if (fix->data && mprotect(fix->data, PAGE_SIZE, PROT_READ | PROT_WRITE) != 0)
 		abort();
-	if (mprotect(fix->rodata, PAGE_SIZE, PROT_READ) != 0)
+	if (fix->rodata && mprotect(fix->rodata, PAGE_SIZE, PROT_READ) != 0)
 		abort();
 
 	if (ptrace(PTRACE_TRACEME, 0, 0, 0) == -1)
 		abort();
 
 	/* Jump to bootstrap: unmap memory and enable seccomp */
-	((void (*)(void *, void *, void *))fix->code)(
-		fix->code,
-		fix->data,
-		fix->rodata
-	);
+	((void (*)(void **))fix->code)(pages);
 	abort();
 }
 
@@ -118,7 +122,7 @@ void fixture_free(struct fixture *fix)
 	fix->pid = -1;
 }
 
-struct fixture *fixture_fork(void)
+struct fixture *fixture_fork(int flags)
 {
 	struct fixture *fix = malloc(sizeof(*fix));
 	if (!fix)
@@ -128,11 +132,11 @@ struct fixture *fixture_fork(void)
 	fix->pid = -1;
 	fix->code = fix->data = fix->rodata = NULL;
 
-	if (!(fix->code = rand_page()))
+	if (!(fix->code = rand_page(NULL)))
 		goto fail;
-	if (!(fix->data = rand_page()))
+	if ((flags & FIXTURE_DATA) && !(fix->data = rand_page(fix->code)))
 		goto fail;
-	if (!(fix->rodata = rand_page()))
+	if ((flags & FIXTURE_RODATA) && !(fix->rodata = rand_page(fix->code)))
 		goto fail;
 
 	fix->pid = fork();

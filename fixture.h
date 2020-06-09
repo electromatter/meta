@@ -18,12 +18,15 @@ struct fixture {
 	void *code, *data, *rodata;
 };
 
+#define FIXTURE_DATA	1
+#define FIXTURE_RODATA	2
+
 /*
  * Fork a new fixture.
  *
  * Returns NULL on error
  */
-extern struct fixture *fixture_fork(void);
+extern struct fixture *fixture_fork(int flags);
 
 /*
  * Free and kill the fixture.
