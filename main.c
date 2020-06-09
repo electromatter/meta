@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 static const unsigned char code[] = {
-	0x90,
+	0xeb, 0xfe
 };
 
 int main(int argc, char **argv)
@@ -27,10 +27,11 @@ int main(int argc, char **argv)
 			return 1;
 		}
 
-		printf("WAIT: pid=%d sig=%d ptr=%p lower=%p upper=%p\n", pid, WSTOPSIG(status), fix->siginfo.si_addr, fix->siginfo.si_lower, fix->siginfo.si_upper);
+		printf("CHANGE: pid=%d sig=%d ptr=%p lower=%p upper=%p\n", pid, WSTOPSIG(status), fix->siginfo.si_addr, fix->siginfo.si_lower, fix->siginfo.si_upper);
 
-		if (ret > 0) {
-			fixture_run(fix, code, sizeof(code));
+		if (ret > 0 && fixture_run(fix, code, sizeof(code)) < 0) {
+			fixture_free(fix);
+			return 1;
 		}
 	}
 

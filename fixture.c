@@ -165,6 +165,9 @@ int fixture_change(struct fixture *fix, pid_t pid, int status)
 	if (!WIFSTOPPED(status))
 		return 0;
 
+	if (ptrace(PTRACE_SETOPTIONS, fix->pid, NULL, (void *)PTRACE_O_EXITKILL) < 0)
+		return -1;
+
 	/* Update process state */
 	if (ptrace(PTRACE_GETSIGINFO, fix->pid, NULL, &fix->siginfo) < 0)
 		return -1;
