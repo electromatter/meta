@@ -15,6 +15,9 @@ clean:
 meta: $(OBJS)
 	$(CC) -o $@ $^
 
+example: example.o fixture.o bootstrap.o
+	$(CC) -o $@ $^
+
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 

@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 static const unsigned char code[] = {
-	0xeb, 0xfe
+	0x90,
 };
 
 int main(int argc, char **argv)
