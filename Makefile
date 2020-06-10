@@ -8,7 +8,7 @@ test: meta
 	./meta < boot.lop
 
 clean:
-	rm *.o meta
+	rm *.o meta example
 
 .PHONY: all clean test
 
